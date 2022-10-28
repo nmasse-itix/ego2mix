@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"time"
 )
 
 type Eco2mixClient struct {
@@ -14,7 +16,7 @@ type Eco2mixClient struct {
 
 func NewEco2mixClient(baseUrl string, client *http.Client) *Eco2mixClient {
 	if baseUrl == "" {
-		baseUrl = ECO2MIX_NATIONAL_REALTIME_BASEURL
+		baseUrl = OPENDATASOFT_API_BASEURL
 	}
 
 	if client == nil {
@@ -30,7 +32,17 @@ func NewEco2mixClient(baseUrl string, client *http.Client) *Eco2mixClient {
 }
 
 func (client *Eco2mixClient) FetchNationalRealTimeData(maxResults int) ([]NationalRealTimeFields, error) {
-	resp, err := client.httpClient.Get(fmt.Sprintf(ECO2MIX_NATIONAL_REALTIME_PATH, client.BaseUrl, maxResults))
+	params := url.Values{}
+	params.Add("dataset", "eco2mix-national-tr")
+	params.Add("facet", "nature")
+	params.Add("facet", "date_heure")
+	params.Add("start", "0")
+	params.Add("rows", fmt.Sprintf("%d", maxResults))
+	params.Add("sort", "date_heure")
+	params.Add("q", fmt.Sprintf("date_heure:[%s TO #now()] AND NOT #null(taux_co2)", time.Now().Format("2006-01-02")))
+	queryString := params.Encode()
+
+	resp, err := client.httpClient.Get(fmt.Sprintf(OPENDATASOFT_API_PATH, client.BaseUrl, queryString))
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +67,8 @@ func (client *Eco2mixClient) FetchNationalRealTimeData(maxResults int) ([]Nation
 }
 
 const (
-	ECO2MIX_NATIONAL_REALTIME_PATH    = `%s/api/records/1.0/search/?dataset=eco2mix-national-tr&q=&facet=nature&facet=date_heure&start=0&rows=%d`
-	ECO2MIX_NATIONAL_REALTIME_BASEURL = `https://odre.opendatasoft.com`
+	OPENDATASOFT_API_PATH    = `%s/api/records/1.0/search/?%s`
+	OPENDATASOFT_API_BASEURL = `https://odre.opendatasoft.com`
 )
 
 // Ce jeu de données, rafraîchi une fois par heure, présente des données
